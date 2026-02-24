@@ -142,6 +142,8 @@ bool NeewerRGBCTLightOutput::did_only_wb_change(float color_temperature, float w
 };
 
 void NeewerRGBCTLightOutput::prepare_ctwb_msg(float color_temperature, float white_brightness) {
+  ESP_LOGW(TAG, "prepare_ctwb_msg input CT=%f WB=%f", color_temperature, white_brightness);
+  
   uint8_t ct = (uint8_t) abs((color_temperature * 24.0) - 56.0);
   uint8_t wb = (uint8_t) (white_brightness * 100.0);
 
