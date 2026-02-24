@@ -34,7 +34,7 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.ENTITY_BASE_SCHEMA)
-    .extend(light.RGB_LIGHT_SCHEMA)
+    .extend(light.RGBCT_LIGHT_SCHEMA)
     .extend(cv.COMPONENT_SCHEMA)
 )
 
