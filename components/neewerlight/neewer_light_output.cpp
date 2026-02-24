@@ -281,12 +281,13 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
         this->prepare_ctwb_msg(color_temperature, white_brightness);
       }
   } else {
+    // MJT: Temp removal.
     if (nothing_changed && rgb_is_zero) {
-      // If nothing changed while in CTWB mode, the RGB values will
-      // end up all zero effectively turning off the light if sent.
-      // Instead bail and don't write anything to the light.
+//      // If nothing changed while in CTWB mode, the RGB values will
+//      // end up all zero effectively turning off the light if sent.
+//      // Instead bail and don't write anything to the light.
       ESP_LOGD(TAG, "Nothing changed and RGB == 0, bailing.");
-      return;
+//      return;
     }
     ESP_LOGD(TAG, "Executing RGB fallback.");
     // Default to setting RGB if for whatever reason both are non-zero, or both
