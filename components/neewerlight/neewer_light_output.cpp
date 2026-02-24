@@ -267,8 +267,8 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
   // in contention with the colour interlock mode which sets the inactive mode
   // to zeroes.
   bool rgb_changed = this->did_rgb_change(red, green, blue);
-  bool ctwb_changed = this->did_ctwb_change(ct_for_neewer, white_brightness);
-  bool only_wb_changed = this->did_only_wb_change(ct_for_neewer, white_brightness);
+  bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
+  bool only_wb_changed = this->did_only_wb_change(color_temperature, white_brightness);
   
   if (rgb_changed) {
     ESP_LOGD(TAG, "RGB changed.");
@@ -292,7 +292,7 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
   this->old_red_ = red;
   this->old_green_ = green;
   this->old_blue_ = blue;
-  this->old_color_temperature_ = ct_for_neewer;
+  this->old_color_temperature_ = color_temperature;
   this->old_white_brightness_ = white_brightness;
 
   // Do whatever else setting the current levels individually accomplishes
