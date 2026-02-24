@@ -262,19 +262,11 @@ if (color_temperature >= 0.0f && color_temperature <= 1.0f) {
   float cold = this->cold_white_temperature_;  // 178.6
   float warm = this->warm_white_temperature_;  // 312.5
 
-  // If Homey uses 0=cold, 1=warm:
+  // If controller uses 0=cold, 1=warm:
   color_temperature = cold + (warm - cold) * t;
 
   ESP_LOGW(TAG, "Mapped normalized CT to %.2f mireds", color_temperature);
 }
-
-  // Prep values for logic to determine which mode we need to change
-  bool rgb_changed = this->did_rgb_change(red, green, blue);
-  bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
-  bool only_wb_changed = this->did_only_wb_change(color_temperature, white_brightness);
-  bool rgb_is_zero = (red == 0.0 && green == 0.0) && blue == 0.0;
-  bool wb_is_zero = white_brightness == 0.0;
-  bool nothing_changed = !rgb_changed && !ctwb_changed;
 
   // The following logic is to handle different message modes on the NW660RGB
   // in contention with the colour interlock mode which sets the inactive mode
