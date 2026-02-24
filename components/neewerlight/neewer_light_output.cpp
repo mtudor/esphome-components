@@ -61,7 +61,7 @@ void NeewerBLEOutput::write_state(float state) {
   // this->msg_ must be prepared prior to running this function
 
   ESP_LOGD(TAG, "Message length before write to light: %i", this->msg_len_);
-  if(!this->msg_ == nullptr || this->msg_len_ == 0) {
+  if(this->msg_ == nullptr || this->msg_len_ == 0) {
     ESP_LOGI(TAG, "Could not send message to light - 0 length message.");
   } else if(chr != nullptr) {
     ESP_LOGI(TAG, "Attempting to write colour command %i bytes, state value: %f", this->msg_len_, state);
