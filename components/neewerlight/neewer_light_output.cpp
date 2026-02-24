@@ -255,25 +255,18 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
 
   state->current_values_as_rgbct(&red, &green, &blue, &color_temperature, &white_brightness);
 
-  // Handle controllers that send color temperature as 0.0–1.0 instead of mireds
-if (color_temperature >= 0.0f && color_temperature <= 1.0f) {
-  ESP_LOGW(TAG, "Color temperature %.2f looks normalized, remapping to mired range.", color_temperature);
-  float t = color_temperature;
-  float cold = this->cold_white_temperature_;  // 178.6
-  float warm = this->warm_white_temperature_;  // 312.5
-
-  // If controller uses 0=cold, 1=warm:
-  color_temperature = cold + (warm - cold) * t;
-
-  ESP_LOGW(TAG, "Mapped normalized CT to %.2f mireds", color_temperature);
-}
+  // Map normalised 0..1 CT to real mireds for the Neewer protocol
+  float ct_for_neewer = color_temperature;
+  if (ct_for_neewer >= 0.0f && ct_for_neewer <= 1.0f) {
+    ct_for_neewer = COLD_WHITE + (WARM_WHITE - COLD_WHITE) * ct_for_neewer;
+  }
 
   // The following logic is to handle different message modes on the NW660RGB
   // in contention with the colour interlock mode which sets the inactive mode
   // to zeroes.
   bool rgb_changed = this->did_rgb_change(red, green, blue);
-  bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
-  bool only_wb_changed = this->did_only_wb_change(color_temperature, white_brightness);
+  bool ctwb_changed = this->did_ctwb_change(ct_for_neewer, white_brightness);
+  bool only_wb_changed = this->did_only_wb_change(ct_for_neewer, white_brightness);
   
   if (rgb_changed) {
     ESP_LOGD(TAG, "RGB changed.");
@@ -283,7 +276,7 @@ if (color_temperature >= 0.0f && color_temperature <= 1.0f) {
     if (only_wb_changed) {
       this->prepare_wb_msg(white_brightness);
     } else {
-      this->prepare_ctwb_msg(color_temperature, white_brightness);
+      this->prepare_ctwb_msg(ct_for_neewer, white_brightness);
     }
   } else {
     ESP_LOGD(TAG, "Nothing changed, not sending.");
@@ -297,7 +290,7 @@ if (color_temperature >= 0.0f && color_temperature <= 1.0f) {
   this->old_red_ = red;
   this->old_green_ = green;
   this->old_blue_ = blue;
-  this->old_color_temperature_ = color_temperature;
+  this->old_color_temperature_ = ct_for_neewer;
   this->old_white_brightness_ = white_brightness;
 
   // Do whatever else setting the current levels individually accomplishes
@@ -318,8 +311,8 @@ NeewerRGBCTLightOutput::NeewerRGBCTLightOutput() {
   this->set_blue(new NeewerStateOutput());
   this->set_color_temperature(new NeewerStateOutput());
   this->set_white_brightness(new NeewerStateOutput());
-  this->set_cold_white_temperature(COLD_WHITE);
-  this->set_warm_white_temperature(WARM_WHITE);
+  this->set_cold_white_temperature(0.0f);
+  this->set_warm_white_temperature(1.0f);
 
   NeewerBLEOutput();
 
