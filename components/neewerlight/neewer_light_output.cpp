@@ -8,8 +8,8 @@ namespace neewerlight {
 void NeewerBLEOutput::dump_config() {
   ESP_LOGCONFIG(TAG, "Neewer BLE Output:");
   ESP_LOGCONFIG(TAG, "  MAC address        : %s", this->parent_->address_str());
-  ESP_LOGCONFIG(TAG, "  Service UUID       : %s", this->service_uuid_.to_str());
-  ESP_LOGCONFIG(TAG, "  Characteristic UUID: %s", this->char_uuid_.to_str());
+  ESP_LOGCONFIG(TAG, "  Service UUID       : %s", this->service_uuid_.to_string().c_str());
+  ESP_LOGCONFIG(TAG, "  Characteristic UUID: %s", this->char_uuid_.to_string().c_str());
   LOG_BINARY_OUTPUT(this);
 };
 
@@ -18,10 +18,10 @@ void NeewerBLEOutput::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
   switch (event) {
     case ESP_GATTC_OPEN_EVT:
       this->client_state_ = espbt::ClientState::ESTABLISHED;
-      ESP_LOGW(TAG, "[%s] Connected successfully!", this->char_uuid_.to_str());
+      ESP_LOGW(TAG, "[%s] Connected successfully!", this->char_uuid_.to_string().c_str());
       break;
     case ESP_GATTC_DISCONNECT_EVT:
-      ESP_LOGW(TAG, "[%s] Disconnected", this->char_uuid_.to_str());
+      ESP_LOGW(TAG, "[%s] Disconnected", this->char_uuid_.to_string().c_str());
       this->client_state_ = espbt::ClientState::IDLE;
       break;
     case ESP_GATTC_WRITE_CHAR_EVT: {
@@ -31,11 +31,11 @@ void NeewerBLEOutput::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
 
       auto *chr = this->parent()->get_characteristic(this->service_uuid_, this->char_uuid_);
       if (chr == nullptr) {
-        ESP_LOGW(TAG, "[%s] Characteristic not found.", this->char_uuid_.to_str());
+        ESP_LOGW(TAG, "[%s] Characteristic not found.", this->char_uuid_.to_string().c_str());
         break;
       }
       if (param->write.handle == chr->handle) {
-        ESP_LOGW(TAG, "[%s] Write error, status=%d", this->char_uuid_.to_str(), param->write.status);
+        ESP_LOGW(TAG, "[%s] Write error, status=%d", this->char_uuid_.to_string().c_str(), param->write.status);
       }
       break;
     }
@@ -47,14 +47,14 @@ void NeewerBLEOutput::gattc_event_handler(esp_gattc_cb_event_t event, esp_gatt_i
 void NeewerBLEOutput::write_state(float state) {
   if (this->client_state_ != espbt::ClientState::ESTABLISHED) {
     ESP_LOGW(TAG, "[%s] Not connected to BLE client.  State update can not be written.",
-             this->char_uuid_.to_str());
+             this->char_uuid_.to_string().c_str());
     return;
   }
 
   auto *chr = this->parent()->get_characteristic(this->service_uuid_, this->char_uuid_);
   if (chr == nullptr) {
     ESP_LOGW(TAG, "[%s] Characteristic not found.  State update can not be written.",
-             this->char_uuid_.to_str());
+             this->char_uuid_.to_string().c_str());
     return;
   }
 
@@ -113,8 +113,8 @@ NeewerBLEOutput::NeewerBLEOutput() {
 void NeewerRGBCTLightOutput::dump_config() {
   ESP_LOGCONFIG(TAG, "Neewer RGBCT Light Output:");
   ESP_LOGCONFIG(TAG, "  MAC address        : %s", this->parent_->address_str());
-  ESP_LOGCONFIG(TAG, "  Service UUID       : %s", this->service_uuid_.to_str());
-  ESP_LOGCONFIG(TAG, "  Characteristic UUID: %s", this->char_uuid_.to_str());
+  ESP_LOGCONFIG(TAG, "  Service UUID       : %s", this->service_uuid_.to_string().c_str());
+  ESP_LOGCONFIG(TAG, "  Characteristic UUID: %s", this->char_uuid_.to_string().c_str());
   ESP_LOGCONFIG(TAG, "  Require Response   : %s", this->require_response_ ? "True" : "False");
   ESP_LOGCONFIG(TAG, "  Colour Temperatures: %.2f - %.2f", 
                 this->cold_white_temperature_, this->warm_white_temperature_);
