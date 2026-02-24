@@ -61,7 +61,7 @@ void NeewerBLEOutput::write_state(float state) {
   // this->msg_ must be prepared prior to running this function
 
   ESP_LOGD(TAG, "Message length before write to light: %i", this->msg_len_);
-  if(this->msg_ == nullptr || this->msg_len_ == 0) {
+  if(!this->msg_ && !this->msg_len_) {
     ESP_LOGI(TAG, "Could not send message to light - 0 length message.");
   } else if(chr != nullptr) {
     ESP_LOGI(TAG, "Attempting to write colour command %i bytes, state value: %f", this->msg_len_, state);
@@ -255,34 +255,41 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
 
   state->current_values_as_rgbct(&red, &green, &blue, &color_temperature, &white_brightness);
 
-  // Map normalised 0..1 CT to real mireds for the Neewer protocol
-  float ct_for_neewer = color_temperature;
-  if (ct_for_neewer >= 0.0f && ct_for_neewer <= 1.0f) {
-    ct_for_neewer = COLD_WHITE + (WARM_WHITE - COLD_WHITE) * ct_for_neewer;
-  }
-
-  ESP_LOGD(TAG, "CT raw=%.3f, CT mapped=%.1f, WB=%.2f", color_temperature, ct_for_neewer, white_brightness);
+  // Prep values for logic to determine which mode we need to change
+  bool rgb_changed = this->did_rgb_change(red, green, blue);
+  bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
+  bool only_wb_changed = this->did_only_wb_change(color_temperature, white_brightness);
+  bool rgb_is_zero = (red == 0.0 && green == 0.0) && blue == 0.0;
+  bool wb_is_zero = white_brightness == 0.0;
+  bool nothing_changed = !rgb_changed && !ctwb_changed;
 
   // The following logic is to handle different message modes on the NW660RGB
   // in contention with the colour interlock mode which sets the inactive mode
   // to zeroes.
-  bool rgb_changed = this->did_rgb_change(red, green, blue);
-  bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
-  bool only_wb_changed = this->did_only_wb_change(color_temperature, white_brightness);
-  
-  if (rgb_changed) {
-    ESP_LOGD(TAG, "RGB changed.");
+  if (rgb_changed && wb_is_zero) {
+    ESP_LOGD(TAG, "RGB value changed while WB == 0");
     this->prepare_rgb_msg(red, green, blue);
-  } else if (ctwb_changed) {
-    ESP_LOGD(TAG, "CT/WB changed.");
-    if (only_wb_changed) {
-      this->prepare_wb_msg(white_brightness);
-    } else {
-      this->prepare_ctwb_msg(ct_for_neewer, white_brightness);
-    }
+  } else if (ctwb_changed && rgb_is_zero) {
+    ESP_LOGD(TAG, "CTWB value changed while RGB == 0");
+      if (only_wb_changed) {
+        ESP_LOGD(TAG, "Only WB changed.");
+        this->prepare_wb_msg(white_brightness);
+      } else {
+        ESP_LOGD(TAG, "CT and WB changed.");
+        this->prepare_ctwb_msg(color_temperature, white_brightness);
+      }
   } else {
-    ESP_LOGD(TAG, "Nothing changed, not sending.");
-    return;
+    if (nothing_changed && rgb_is_zero) {
+      // If nothing changed while in CTWB mode, the RGB values will
+      // end up all zero effectively turning off the light if sent.
+      // Instead bail and don't write anything to the light.
+      ESP_LOGD(TAG, "Nothing changed and RGB == 0, bailing.");
+      return;
+    }
+    ESP_LOGD(TAG, "Executing RGB fallback.");
+    // Default to setting RGB if for whatever reason both are non-zero, or both
+    // are zero without having triggered a change.
+    this->prepare_rgb_msg(red, green, blue);
   }
 
   // Message having been prepared, we can send it off into the sunset.
@@ -313,10 +320,10 @@ NeewerRGBCTLightOutput::NeewerRGBCTLightOutput() {
   this->set_blue(new NeewerStateOutput());
   this->set_color_temperature(new NeewerStateOutput());
   this->set_white_brightness(new NeewerStateOutput());
-  this->set_cold_white_temperature(0.0f);
-  this->set_warm_white_temperature(1.0f);
+  this->set_cold_white_temperature(COLD_WHITE);
+  this->set_warm_white_temperature(WARM_WHITE);
 
-  //#NeewerBLEOutput();
+  NeewerBLEOutput();
 
   // Assume colour interlock is on as the NW660 definitely treats RGB and CT as separate modes
   // this->set_color_interlock(true);
