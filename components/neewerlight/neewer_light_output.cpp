@@ -255,6 +255,20 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
 
   state->current_values_as_rgbct(&red, &green, &blue, &color_temperature, &white_brightness);
 
+  // Handle controllers that send color temperature as 0.0–1.0 instead of mireds
+  if (color_temperature > 0.0f && color_temperature < 10.0f) {
+    ESP_LOGW(TAG, "Color temperature %.2f looks normalized, remapping to mired range.", color_temperature);
+
+    float t = color_temperature;  // assume 0..1
+    float cold = this->cold_white_temperature_;  // 178.6
+    float warm = this->warm_white_temperature_;  // 312.5
+
+    // Map 0..1 into mired range
+    color_temperature = cold + (warm - cold) * t;
+
+    ESP_LOGW(TAG, "Mapped normalized CT to %.2f mireds", color_temperature);
+  }
+
   // Prep values for logic to determine which mode we need to change
   bool rgb_changed = this->did_rgb_change(red, green, blue);
   bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
