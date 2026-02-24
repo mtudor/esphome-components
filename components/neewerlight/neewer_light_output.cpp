@@ -61,7 +61,7 @@ void NeewerBLEOutput::write_state(float state) {
   // this->msg_ must be prepared prior to running this function
 
   ESP_LOGD(TAG, "Message length before write to light: %i", this->msg_len_);
-  if(!this->msg_ && !this->msg_len_) {
+  if(!this->msg_ == nullptr || this->msg_len_ == 0) {
     ESP_LOGI(TAG, "Could not send message to light - 0 length message.");
   } else if(chr != nullptr) {
     ESP_LOGI(TAG, "Attempting to write colour command %i bytes, state value: %f", this->msg_len_, state);
@@ -261,6 +261,8 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
     ct_for_neewer = COLD_WHITE + (WARM_WHITE - COLD_WHITE) * ct_for_neewer;
   }
 
+  ESP_LOGD(TAG, "CT raw=%.3f, CT mapped=%.1f, WB=%.2f", color_temperature, ct_for_neewer, white_brightness);
+
   // The following logic is to handle different message modes on the NW660RGB
   // in contention with the colour interlock mode which sets the inactive mode
   // to zeroes.
@@ -314,7 +316,7 @@ NeewerRGBCTLightOutput::NeewerRGBCTLightOutput() {
   this->set_cold_white_temperature(0.0f);
   this->set_warm_white_temperature(1.0f);
 
-  NeewerBLEOutput();
+  //#NeewerBLEOutput();
 
   // Assume colour interlock is on as the NW660 definitely treats RGB and CT as separate modes
   // this->set_color_interlock(true);
