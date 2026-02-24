@@ -256,18 +256,17 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
   state->current_values_as_rgbct(&red, &green, &blue, &color_temperature, &white_brightness);
 
   // Handle controllers that send color temperature as 0.0–1.0 instead of mireds
-  if (color_temperature > 0.0f && color_temperature < 10.0f) {
-    ESP_LOGW(TAG, "Color temperature %.2f looks normalized, remapping to mired range.", color_temperature);
+if (color_temperature >= 0.0f && color_temperature <= 1.0f) {
+  ESP_LOGW(TAG, "Color temperature %.2f looks normalized, remapping to mired range.", color_temperature);
+  float t = color_temperature;
+  float cold = this->cold_white_temperature_;  // 178.6
+  float warm = this->warm_white_temperature_;  // 312.5
 
-    float t = color_temperature;  // assume 0..1
-    float cold = this->cold_white_temperature_;  // 178.6
-    float warm = this->warm_white_temperature_;  // 312.5
+  // If Homey uses 0=cold, 1=warm:
+  color_temperature = cold + (warm - cold) * t;
 
-    // Map 0..1 into mired range
-    color_temperature = cold + (warm - cold) * t;
-
-    ESP_LOGW(TAG, "Mapped normalized CT to %.2f mireds", color_temperature);
-  }
+  ESP_LOGW(TAG, "Mapped normalized CT to %.2f mireds", color_temperature);
+}
 
   // Prep values for logic to determine which mode we need to change
   bool rgb_changed = this->did_rgb_change(red, green, blue);
@@ -280,30 +279,23 @@ void NeewerRGBCTLightOutput::write_state(light::LightState *state) {
   // The following logic is to handle different message modes on the NW660RGB
   // in contention with the colour interlock mode which sets the inactive mode
   // to zeroes.
-  if (rgb_changed && wb_is_zero) {
-    ESP_LOGD(TAG, "RGB value changed while WB == 0");
+  bool rgb_changed = this->did_rgb_change(red, green, blue);
+  bool ctwb_changed = this->did_ctwb_change(color_temperature, white_brightness);
+  bool only_wb_changed = this->did_only_wb_change(color_temperature, white_brightness);
+  
+  if (rgb_changed) {
+    ESP_LOGD(TAG, "RGB changed.");
     this->prepare_rgb_msg(red, green, blue);
-  } else if (ctwb_changed && rgb_is_zero) {
-    ESP_LOGD(TAG, "CTWB value changed while RGB == 0");
-      if (only_wb_changed) {
-        ESP_LOGD(TAG, "Only WB changed.");
-        this->prepare_wb_msg(white_brightness);
-      } else {
-        ESP_LOGD(TAG, "CT and WB changed.");
-        this->prepare_ctwb_msg(color_temperature, white_brightness);
-      }
-  } else {
-    if (nothing_changed && rgb_is_zero) {
-      // If nothing changed while in CTWB mode, the RGB values will
-      // end up all zero effectively turning off the light if sent.
-      // Instead bail and don't write anything to the light.
-      ESP_LOGD(TAG, "Nothing changed and RGB == 0, bailing.");
-      return;
+  } else if (ctwb_changed) {
+    ESP_LOGD(TAG, "CT/WB changed.");
+    if (only_wb_changed) {
+      this->prepare_wb_msg(white_brightness);
+    } else {
+      this->prepare_ctwb_msg(color_temperature, white_brightness);
     }
-    ESP_LOGD(TAG, "Executing RGB fallback.");
-    // Default to setting RGB if for whatever reason both are non-zero, or both
-    // are zero without having triggered a change.
-    this->prepare_rgb_msg(red, green, blue);
+  } else {
+    ESP_LOGD(TAG, "Nothing changed, not sending.");
+    return;
   }
 
   // Message having been prepared, we can send it off into the sunset.
